@@ -1,17 +1,15 @@
 package com.wlu.orm.hbase.schema;
 
-import org.apache.hadoop.hbase.client.Put;
+import java.util.Map;
 
-import com.wlu.orm.hbase.schema.value.Value;
+import org.apache.hadoop.hbase.util.Bytes;
 
 public class FamilyQualifierSchema {
 	private byte[] family = null;
 	private byte[] qualifier = null;
-
-	// TODO: maybe rmoved later
-	private Value V = null;
-
-	private byte[] value = null;
+	// this is only used as Schema for Delete/etc: from sub(family) class's
+	// field's name to qualifer name
+	private Map<String, byte[]> subFieldToQualifier = null;
 
 	public byte[] getFamily() {
 		return family;
@@ -29,21 +27,29 @@ public class FamilyQualifierSchema {
 		this.qualifier = qualifier;
 	}
 
-//	public Value getValue() {
-//		return V;
-//	}
-//
-//	public void setValue(Value v) {
-//		V = v;
-//		value = v.toBytes();
-//	}
+	public Map<String, byte[]> getSubFieldToQualifier() {
+		return subFieldToQualifier;
+	}
 
-	public Put AddToPut(Put put) {
-		if (put == null) {
-			return null;
+	public void setSubFieldToQualifier(Map<String, byte[]> subFieldToQualifier) {
+		this.subFieldToQualifier = subFieldToQualifier;
+	}
+
+	public String toString() {
+		String string = "Family:\t";
+		string += Bytes.toString(family) + "\n";
+		if (qualifier != null) {
+			string += "Qualifier:\t";
+			string += Bytes.toString(qualifier) + "\n";
 		}
-		put.add(family, qualifier, value);
-		return put;
+		if (subFieldToQualifier != null) {
+			string += "SubQualifiers:\t";
+			for (String s : subFieldToQualifier.keySet()) {
+				string += "Field: " + s + " -> Qualifier: "
+						+ Bytes.toString(subFieldToQualifier.get(s)) + "\n";
+			}
+		}
+		return string;
 	}
 
 }

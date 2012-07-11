@@ -13,6 +13,8 @@ public class User {
 	private LikePages likePages;
 	@DatabaseField(familyName = "family_other", qualifierName = "AInt")
 	private int aint;
+	
+	private int bint;
 
 	public User(String id, Profile profile, LikePages likePages, int aint) {
 		super();

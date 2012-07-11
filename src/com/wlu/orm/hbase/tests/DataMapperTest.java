@@ -9,6 +9,7 @@ import java.util.Map;
 import com.wlu.orm.hbase.connection.HBaseConnection;
 import com.wlu.orm.hbase.exceptions.HBaseOrmException;
 import com.wlu.orm.hbase.schema.DataMapper;
+import com.wlu.orm.hbase.schema.DataMapperFacory;
 
 import junit.framework.TestCase;
 
@@ -19,10 +20,11 @@ public class DataMapperTest extends TestCase {
 
 	public void testDataMapper() {
 		try {
-			new DataMapper(User.class);
+			DataMapperFacory<User> UserMapperFactory = new DataMapperFacory<User>(
+					User.class);
 
 			Profile p = new Profile("jacky", "14", "Hangzhou, Wen 2 road, #391");
-			Map<String, String> mp1 = new HashMap<String, String>();
+			HashMap<String, String> mp1 = new HashMap<String, String>();
 			Map<String, PageContents> mp3 = new HashMap<String, PageContents>();
 			List<String> list2 = new ArrayList<String>();
 			for (int i = 0; i < 10; i++) {
@@ -36,8 +38,12 @@ public class DataMapperTest extends TestCase {
 
 			User user = new User("1234", p, lp, 8080);
 
-			DataMapper<User> dm1 = new DataMapper<User>(user);
-			System.out.println(dm1.TableCreateScript());
+			DataMapper<User> dm1 = UserMapperFactory.Create(user);
+			DataMapperFacory<Post> PostMapperFactory = new DataMapperFacory<Post>(
+					Post.class);
+			System.out.println(UserMapperFactory.TableCreateScript());
+			DataMapper<Post> postmapper = PostMapperFactory.Create(new Post());
+			System.out.println(PostMapperFactory.TableCreateScript());
 			dm1.Insert(hbaseconnection);
 
 		} catch (HBaseOrmException e) {
@@ -47,7 +53,6 @@ public class DataMapperTest extends TestCase {
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

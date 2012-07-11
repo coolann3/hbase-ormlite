@@ -30,12 +30,38 @@ public class HBaseConnection {
 		}
 	}
 
+	/**
+	 * insert put to the table with name <code>tablename</code>
+	 * 
+	 * @param tablename
+	 * @param put
+	 */
 	public void Insert(byte[] tablename, Put put) {
 		HTable htable = (HTable) pool.getTable(tablename);
 		try {
 			htable.put(put);
 		} catch (IOException e) {
 			e.printStackTrace();
+		} finally {
+			pool.putTable(htable);
+		}
+	}
+
+	/**
+	 * Delete the whole row of table with name <code>tablename</code>
+	 * 
+	 * @param tablename
+	 * @param rowkey
+	 */
+	public void Delete(byte[] tablename,
+			org.apache.hadoop.hbase.client.Delete delete) {
+		HTable htable = (HTable) pool.getTable(tablename);
+		try {
+			htable.delete(delete);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			pool.putTable(htable);
 		}
 	}
 
