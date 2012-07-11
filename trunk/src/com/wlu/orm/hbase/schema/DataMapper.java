@@ -21,38 +21,41 @@ import com.wlu.orm.hbase.schema.value.Value;
 import com.wlu.orm.hbase.schema.value.ValueFactory;
 import com.wlu.orm.hbase.util.util;
 
+/**
+ * Each
+ * 
+ * @author Administrator
+ * 
+ * @param <T>
+ */
 public class DataMapper<T> {
 	Log LOG = LogFactory.getLog(DataMapper.class);
-	// fixed schema for the generic type T
-	public static String tablename;
-	public static Map<Field, FamilyQualifierSchema> fixedSchema;
-	public static Field rowkeyField;
-
-	public static Class<?> dataClass;
+	// fixed schema for the generic type T, copy from the factory
+	public String tablename;
+	public Map<Field, FamilyQualifierSchema> fixedSchema;
+	public Field rowkeyField;
+	public Class<?> dataClass;
 
 	// private data for individual instance
 	private Map<Field, FamilytoQualifersAndValues> datafieldsToFamilyQualifierValue;
 	// private data for rowkey
 	private Value rowkey;
 
-	public DataMapper(Class<T> dataClass_) throws HBaseOrmException {
-		dataClass = dataClass_;
-		// set tablename
-		setTableName();
-		// set fixed schema
-		fixedSchema = new HashMap<Field, FamilyQualifierSchema>();
-		setFixedSchema();
-	}
-
-	public DataMapper(T instance) throws HBaseOrmException,
-			IllegalArgumentException, IllegalAccessException,
-			InvocationTargetException {
-		// 1. copy the fixed schema to datafieldToSchema. </br>
-		// 2. fill value according to ... to Value of datafieldToSchema; </br>
-		// notice:
-		CopyToDataFieldSchemaFromFixedSchema();
-		CopyToDataFieldsFromInstance(instance);
-
+	/**
+	 * Construct with fixed members as parameters
+	 * 
+	 * @param tablename
+	 * @param fixedSchema
+	 * @param rowkeyField
+	 * @param dataClass
+	 */
+	public DataMapper(String tablename,
+			Map<Field, FamilyQualifierSchema> fixedSchema, Field rowkeyField,
+			Class<?> dataClass) {
+		this.tablename = tablename;
+		this.fixedSchema = fixedSchema;
+		this.rowkeyField = rowkeyField;
+		this.dataClass = dataClass;
 	}
 
 	// insert the instance to HBase
@@ -66,39 +69,15 @@ public class DataMapper<T> {
 		connection.Insert(Bytes.toBytes(tablename), put);
 	}
 
+	
+
 	/**
-	 * a helper method to return script to create the HBase table according to
-	 * fixedSchema
+	 * Copy from the fixed schema. All members used in the method are fixed
+	 * according to the <code>dataClass</code>
 	 * 
-	 * @return Script to create create the table
+	 * @throws HBaseOrmException
 	 */
-	public static String TableCreateScript() {
-		StringBuffer sb = new StringBuffer();
-		sb.append("create '");
-		sb.append(tablename + "', ");
-		for (Field field : fixedSchema.keySet()) {
-			FamilyQualifierSchema sc = fixedSchema.get(field);
-			String family = Bytes.toString(sc.getFamily());
-			sb.append("{NAME => '" + family + "'},");
-		}
-
-		return sb.toString().substring(0, sb.length() - 1);
-	}
-
-	public static HTableDescriptor TableCreateDescriptor() {
-
-		HTableDescriptor td = new HTableDescriptor(Bytes.toBytes(tablename));
-		for (Field field : fixedSchema.keySet()) {
-			FamilyQualifierSchema sc = fixedSchema.get(field);
-			td.addFamily(new HColumnDescriptor(sc.getFamily()));
-		}
-
-		return td;
-
-	}
-
-	private void CopyToDataFieldSchemaFromFixedSchema()
-			throws HBaseOrmException {
+	public void CopyToDataFieldSchemaFromFixedSchema() throws HBaseOrmException {
 		datafieldsToFamilyQualifierValue = new HashMap<Field, FamilytoQualifersAndValues>();
 		for (Field field : fixedSchema.keySet()) {
 			FamilyQualifierSchema fqv = fixedSchema.get(field);
@@ -113,6 +92,15 @@ public class DataMapper<T> {
 
 		}
 	}
+	
+	public Map<Field, FamilytoQualifersAndValues> getDatafieldsToFamilyQualifierValue() {
+		return datafieldsToFamilyQualifierValue;
+	}
+
+	public void setDatafieldsToFamilyQualifierValue(
+			Map<Field, FamilytoQualifersAndValues> datafieldsToFamilyQualifierValue) {
+		this.datafieldsToFamilyQualifierValue = datafieldsToFamilyQualifierValue;
+	}
 
 	/**
 	 * Create a concret DataMapper instance by filling rowkey, family:qualifier
@@ -124,7 +112,7 @@ public class DataMapper<T> {
 	 * @throws IllegalAccessException
 	 * @throws InvocationTargetException
 	 */
-	private void CopyToDataFieldsFromInstance(T instance)
+	public void CopyToDataFieldsFromInstance(T instance)
 			throws IllegalArgumentException, HBaseOrmException,
 			IllegalAccessException, InvocationTargetException {
 		for (Field field : instance.getClass().getDeclaredFields()) {
@@ -143,7 +131,7 @@ public class DataMapper<T> {
 						fqv.getQualifier(), value);
 			} else {
 				// user defined class or a list as family data <br/>
-				// 1. user defined class
+				// 1. user defined class, need to add fixed qualifer informtion to the fixedField
 				Map<byte[], Value> qualifierValues = GetQualifierValuesFromInstanceAsFamily(util
 						.GetFromField(instance, field));
 				datafieldsToFamilyQualifierValue.get(field)
@@ -234,107 +222,6 @@ public class DataMapper<T> {
 			}
 		}
 		return qualifierValues;
-	}
-
-	/**
-	 * if annotation is not set, use class name instead
-	 */
-	private void setTableName() {
-		DatabaseTable databaseTable = (DatabaseTable) dataClass
-				.getAnnotation(DatabaseTable.class);
-		if (databaseTable == null || databaseTable.tableName().length() == 0) {
-			LOG.warn("Table name is not specified as annotation, use class name instead");
-			tablename = dataClass.getSimpleName();
-		} else {
-			tablename = databaseTable.tableName();
-		}
-	}
-
-	/**
-	 * <li>if annotation for a field is not set, the field is omitted. <br> <li>
-	 * if is a rowkey; <br> <li>
-	 * others
-	 * 
-	 * @throws HBaseOrmException
-	 */
-	private void setFixedSchema() throws HBaseOrmException {
-		// TODO: maybe need to deal with inheritance scenario: dataClass's
-		// super-class
-		for (Field field : dataClass.getDeclaredFields()) {
-			DatabaseField databaseField = field
-					.getAnnotation(DatabaseField.class);
-			if (databaseField == null) {
-				// not included in database
-				continue;
-			}
-			if (databaseField.id()) {
-				// set the field as id
-				rowkeyField = field;
-				continue;
-			}
-
-			FamilyQualifierSchema fqv = FQSchemaBuildFromField(databaseField,
-					field);
-
-			fixedSchema.put(field, fqv);
-		}
-	}
-
-	/**
-	 * 
-	 * @param databaseField
-	 * @param field
-	 * @return
-	 * @throws HBaseOrmException
-	 */
-	private FamilyQualifierSchema FQSchemaBuildFromField(
-			DatabaseField databaseField, Field field) throws HBaseOrmException {
-
-		String family;
-		String qualifier;
-		// TODO
-		// 1. primitive type
-		if (field.getType().isPrimitive()) {
-			if (databaseField.familyName().length() == 0) {
-				throw new HBaseOrmException("primitive typed field "
-						+ dataClass.getName() + "." + field.getName()
-						+ " must define family with annotation.");
-			} else {
-				family = getDatabaseColumnName(databaseField.familyName(),
-						field);
-				qualifier = getDatabaseColumnName(
-						databaseField.qualifierName(), field);
-			}
-		}
-		// List, TODO: maybe ArrayList or other
-		else if (field.getType().equals(List.class)) {
-			// only set family, qualifier is ...
-			family = getDatabaseColumnName(databaseField.familyName(), field);
-			qualifier = null;
-			if (!databaseField.isQualiferList()) {
-				LOG.warn("Field " + field.getName()
-						+ " should be annotated as 'isQualifierList = true '");
-			}
-		}
-		// others
-		else {
-			// non-primitive and not List
-			family = getDatabaseColumnName(databaseField.familyName(), field);
-			qualifier = null;
-		}
-
-		// TODO
-		FamilyQualifierSchema fqv = new FamilyQualifierSchema();
-
-		fqv.setFamily(Bytes.toBytes(family));
-		if (qualifier == null) {
-			fqv.setQualifier(null);
-		} else {
-			fqv.setQualifier(Bytes.toBytes(qualifier));
-		}
-
-		return fqv;
-
 	}
 
 	private String getDatabaseColumnName(String string, Field field) {

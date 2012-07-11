@@ -57,4 +57,6 @@ public interface Dao<T> {
 	 * @param data
 	 */
 	public void Delete(T data);
+	
+	//public void Update(T data, String familyFieldName);
 }

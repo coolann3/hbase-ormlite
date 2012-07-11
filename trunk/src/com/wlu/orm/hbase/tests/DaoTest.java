@@ -12,12 +12,12 @@ import com.wlu.orm.hbase.exceptions.HBaseOrmException;
 
 import junit.framework.TestCase;
 
-public class DaoTest extends TestCase{
-	
-	public void testDao() throws HBaseOrmException{
+public class DaoTest extends TestCase {
+
+	public void testDao() throws HBaseOrmException {
 		HBaseConnection hbaseconnection = new HBaseConnection(
 				"hadoop008,hadoop009,hadoop010,hadoop006,hadoop007", "2181", 10);
-		
+
 		Profile p = new Profile("jacky", "14", "Hangzhou, Wen 2 road, #391");
 		HashMap<String, String> mp1 = new HashMap<String, String>();
 		Map<String, PageContents> mp3 = new HashMap<String, PageContents>();
@@ -32,13 +32,16 @@ public class DaoTest extends TestCase{
 		LikePages lp = new LikePages(mp1, list2, mp3);
 
 		User user = new User("1234", p, lp, 8080);
-		
-		Dao<User> dao = new DaoImpl(User.class, hbaseconnection);
-		
+
+		Dao<User> dao = new DaoImpl<User>(User.class, hbaseconnection);
+
 		dao.Insert(user);
 		p = new Profile("hellen", "20", "Beijing, Chaoyang #1");
 		user = new User("001", p, null, 8080);
 		dao.Insert(user);
+
+		dao.Delete(user, "profile", "address");
+		dao.Delete(user, "profile", "aint");
 	}
 
 }

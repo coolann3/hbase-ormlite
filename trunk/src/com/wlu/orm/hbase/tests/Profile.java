@@ -11,6 +11,8 @@ public class Profile {
 	private String age;
 	@DatabaseField()
 	private String address;
+	
+	private int aint;
 
 	public Profile(String name, String age, String address) {
 		super();

@@ -17,32 +17,35 @@ public class ValueFactory {
 	static Class<Float> FLOAT = Float.class;
 	static Class<String> STRING = String.class;
 
-	
-
 	public static <T> Value Create(T instance) {
-		
-		if(instance == null){
+
+		if (instance == null) {
 			return new NullValue();
 		}
-		
+
 		Class<? extends Object> instanceClass = instance.getClass();
 		if (instanceClass.equals(INTEGER)) {
 			return new IntValue((Integer) instance);
-		}
-		else if (instanceClass.equals(DOUBLE)) {
+		} else if (instanceClass.equals(DOUBLE)) {
 			return new DoubleValue((Double) instance);
-		}
-		else if (instanceClass.equals(FLOAT)) {
+		} else if (instanceClass.equals(FLOAT)) {
 			return new FloatValue((Float) instance);
-		}
-		else if (instanceClass.equals(STRING)) {
+		} else if (instanceClass.equals(STRING)) {
 			return new StringValue((String) instance);
-		}
-		else{
+		} else {
 			return new StringValue((String) instance.toString());
 		}
-//		return null;
+		// return null;
 	}
+
+	/*
+	 * used when directly create a Value
+	 */
+	public static Value Create(String value) {
+		return new StringValue(value);
+	}
+
+	// TODO: add more
 
 	class st {
 		String name;
@@ -54,13 +57,11 @@ public class ValueFactory {
 		}
 	}
 
-	
-
 	public static void main(String args[]) throws IllegalArgumentException,
 			IllegalAccessException, InvocationTargetException {
 		testFields tf = new testFields("abc", 1, 1.0f, 2d);
 		for (Field field : tf.getClass().getDeclaredFields()) {
-			
+
 			Value v = Create(util.GetFromField(tf, field));
 			if (v == null) {
 				continue;
