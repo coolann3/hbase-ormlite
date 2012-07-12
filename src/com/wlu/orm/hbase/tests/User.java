@@ -1,5 +1,7 @@
 package com.wlu.orm.hbase.tests;
 
+import java.util.List;
+
 import com.wlu.orm.hbase.annotation.DatabaseField;
 import com.wlu.orm.hbase.annotation.DatabaseTable;
 
@@ -13,7 +15,17 @@ public class User {
 	private LikePages likePages;
 	@DatabaseField(familyName = "family_other", qualifierName = "AInt")
 	private int aint;
-	
+	@DatabaseField(familyName = "family_alist", isQualiferList = true)
+	private List<String> alist;
+
+	public List<String> getAlist() {
+		return alist;
+	}
+
+	public void setAlist(List<String> alist) {
+		this.alist = alist;
+	}
+
 	private int bint;
 
 	public User(String id, Profile profile, LikePages likePages, int aint) {

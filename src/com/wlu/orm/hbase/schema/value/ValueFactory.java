@@ -41,7 +41,7 @@ public class ValueFactory {
 	/*
 	 * used when directly create a Value
 	 */
-	public static Value Create(String value) {
+	public static Value TypeCreate(String value) {
 		return new StringValue(value);
 	}
 
