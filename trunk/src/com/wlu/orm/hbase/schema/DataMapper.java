@@ -2,6 +2,7 @@ package com.wlu.orm.hbase.schema;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ public class DataMapper<T> {
 	// fixed schema for the generic type T, copy from the factory
 	public String tablename;
 	public Map<Field, FamilyQualifierSchema> fixedSchema;
+	public Map<Field, FieldDataType> fieldDataType;
 	public Field rowkeyField;
 	public Class<?> dataClass;
 
@@ -50,9 +52,11 @@ public class DataMapper<T> {
 	 * @param dataClass
 	 */
 	public DataMapper(String tablename,
-			Map<Field, FamilyQualifierSchema> fixedSchema, Field rowkeyField,
+			Map<Field, FamilyQualifierSchema> fixedSchema,
+			Map<Field, FieldDataType> fieldDataType, Field rowkeyField,
 			Class<?> dataClass) {
 		this.tablename = tablename;
+		this.fieldDataType = fieldDataType;
 		this.fixedSchema = fixedSchema;
 		this.rowkeyField = rowkeyField;
 		this.dataClass = dataClass;
@@ -68,8 +72,6 @@ public class DataMapper<T> {
 
 		connection.Insert(Bytes.toBytes(tablename), put);
 	}
-
-	
 
 	/**
 	 * Copy from the fixed schema. All members used in the method are fixed
@@ -92,7 +94,7 @@ public class DataMapper<T> {
 
 		}
 	}
-	
+
 	public Map<Field, FamilytoQualifersAndValues> getDatafieldsToFamilyQualifierValue() {
 		return datafieldsToFamilyQualifierValue;
 	}
@@ -122,25 +124,144 @@ public class DataMapper<T> {
 						.Create(util.GetFromField(instance, field));
 				continue;
 			}
-			FamilyQualifierSchema fqv = fixedSchema.get(field);
-			if (fqv.getQualifier() != null) {
-				// Primitive, family and qualifier name are both specified
+			FamilyQualifierSchema fq = fixedSchema.get(field);
+			FieldDataType fdt = fieldDataType.get(field);
+			// field not included for HBase
+			if (fq == null) {
+				continue;
+			}
+
+			// Primitive, family and qualifier name are both specified
+			if (fq.getQualifier() != null) {
 				Value value = ValueFactory.Create(util.GetFromField(instance,
 						field));
 				datafieldsToFamilyQualifierValue.get(field).Add(
-						fqv.getQualifier(), value);
+						fq.getQualifier(), value);
 			} else {
 				// user defined class or a list as family data <br/>
-				// 1. user defined class, need to add fixed qualifer informtion to the fixedField
-				Map<byte[], Value> qualifierValues = GetQualifierValuesFromInstanceAsFamily(util
-						.GetFromField(instance, field));
-				datafieldsToFamilyQualifierValue.get(field)
-						.Add(qualifierValues);
-				// 2. Map or list
-				// TODO
+				// 1. user defined class, need to add fixed qualifer informtion
+				// to the fixedField
+				if (fdt.isSubLevelClass()/* databasetable.canBeFamily() */) {
+					Map<byte[], Value> qualifierValues = GetQualifierValuesFromInstanceAsFamily(
+							util.GetFromField(instance, field), fq, fdt);
+					datafieldsToFamilyQualifierValue.get(field).Add(
+							qualifierValues);
+				} else if (fdt.isList()/* databasefield.isQualiferList() */) {
+					@SuppressWarnings("unchecked")
+					List<String> list = (List<String>) (util.GetFromField(
+							instance, field));
+
+					if (list == null) {
+						continue;
+					}
+					for (String key : list) {
+						String qualifier = key;
+						Value value = ValueFactory.Create(null);
+
+						datafieldsToFamilyQualifierValue.get(field).Add(
+								Bytes.toBytes(qualifier), value);
+					}
+				} else if (fdt.isMap()) {
+					// 2. Map
+					// TODO
+				}
+
 			}
 		}
 	}
+
+	/**
+	 * Just set the rowkey for the instance
+	 * 
+	 * @param instance
+	 */
+	public void SetRowKey(T instance) {
+		for (Field field : instance.getClass().getDeclaredFields()) {
+			// if is rowkey
+			if (rowkeyField.equals(field)) {
+				try {
+					rowkey = ValueFactory.Create(util.GetFromField(instance,
+							field));
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+			}
+			break;
+		}
+	}
+
+	public void SetFieldValue(T instance, List<String> fieldName)
+			throws IllegalArgumentException, IllegalAccessException,
+			InvocationTargetException, HBaseOrmException {
+		for (Field field : instance.getClass().getDeclaredFields()) {
+			if (!fieldName.contains(field.getName())) {
+				continue;
+			}
+			// if is rowkey
+			if (rowkeyField.equals(field)) {
+				rowkey = ValueFactory
+						.Create(util.GetFromField(instance, field));
+				continue;
+			}
+			FamilyQualifierSchema fq = fixedSchema.get(field);
+			FieldDataType fdt = fieldDataType.get(field);
+			// field not included for HBase
+			if (fq == null) {
+				continue;
+			}
+
+			// Primitive, family and qualifier name are both specified
+			if (fq.getQualifier() != null) {
+				Value value = ValueFactory.Create(util.GetFromField(instance,
+						field));
+				datafieldsToFamilyQualifierValue.get(field).Add(
+						fq.getQualifier(), value);
+			} else {
+				// user defined class or a list as family data <br/>
+				// 1. user defined class, need to add fixed qualifer informtion
+				// to the fixedField
+				if (fdt.isSubLevelClass()/* databasetable.canBeFamily() */) {
+					Map<byte[], Value> qualifierValues = GetQualifierValuesFromInstanceAsFamily(
+							util.GetFromField(instance, field), fq, fdt);
+					datafieldsToFamilyQualifierValue.get(field).Add(
+							qualifierValues);
+				} else if (fdt.isList()/* databasefield.isQualiferList() */) {
+					@SuppressWarnings("unchecked")
+					List<String> list = (List<String>) (util.GetFromField(
+							instance, field));
+
+					if (list == null) {
+						continue;
+					}
+					for (String key : list) {
+						String qualifier = key;
+						Value value = ValueFactory.Create(null);
+
+						datafieldsToFamilyQualifierValue.get(field).Add(
+								Bytes.toBytes(qualifier), value);
+					}
+				} else if (fdt.isMap()) {
+					// 2. Map
+					// TODO
+				}
+
+			}
+		}
+
+	}
+
+	public void SetFieldValue(T instance, String fieldName, String subFieldName) {
+
+	}
+
+	/**
+	 * 
+	 */
+	// public void SetA
 
 	/**
 	 * Build a map {qualifier: value} from the object as family
@@ -154,29 +275,33 @@ public class DataMapper<T> {
 	 * @throws InvocationTargetException
 	 */
 	private Map<byte[], Value> GetQualifierValuesFromInstanceAsFamily(
-			Object instance) throws HBaseOrmException,
-			IllegalArgumentException, IllegalAccessException,
-			InvocationTargetException {
+			Object instance, FamilyQualifierSchema fqs, FieldDataType fdt)
+			throws HBaseOrmException, IllegalArgumentException,
+			IllegalAccessException, InvocationTargetException {
 		if (instance == null) {
 			return null;
 		}
-		DatabaseTable databaseTable = instance.getClass().getAnnotation(
-				DatabaseTable.class);
+
 		Map<byte[], Value> qualifierValues = new HashMap<byte[], Value>();
-		if (!databaseTable.canBeFamily()) {
-			return null;
-		} else {
+		{
 			for (Field field : instance.getClass().getDeclaredFields()) {
 				DatabaseField databaseField = field
 						.getAnnotation(DatabaseField.class);
-				if (databaseField == null) {
+				if (fdt.isSkip()) {
 					// not included in database
 					continue;
 				}
 				Class<?> fieldType = field.getType();
-				// 1. primitive type
-				if (fieldType.isPrimitive()) {
-
+				// 1. primitive type (actually include those UDF class, to which
+				// we treat them as toString())
+				if (fdt.getSubLevelDataType(field).isPrimitive()/*
+																 * fieldType.
+																 * isPrimitive()
+																 */) {
+					if (!fieldType.isPrimitive()) {
+						LOG.warn("This is not good: instance is not primitive nor List nor Map , but "
+								+ fieldType + ". We use toString() as value.");
+					}
 					String qualifier = getDatabaseColumnName(
 							databaseField.qualifierName(), field);
 					Value value = ValueFactory.Create(util.GetFromField(
@@ -184,8 +309,8 @@ public class DataMapper<T> {
 					qualifierValues.put(Bytes.toBytes(qualifier), value);
 
 				}
-				// Map, TODO: maybe HashMap or other
-				else if (fieldType.equals(Map.class)) {
+				// Map, maybe HashMap or other map, all converted to Map
+				else if (fdt.getSubLevelDataType(field).isMap()) {
 					// get each key as qualifier and value as value
 					@SuppressWarnings("unchecked")
 					Map<String, Object> map = (Map<String, Object>) util
@@ -197,8 +322,8 @@ public class DataMapper<T> {
 					}
 
 				}
-				// List, TODO:: maybe ArrayList or others
-				else if (fieldType.equals(List.class)) {
+				// List, maybe ArrayList or others list, all converted to List
+				else if (fdt.getSubLevelDataType(field).isList()) {
 					// not good ...
 					@SuppressWarnings("unchecked")
 					List<String> list = (List<String>) (util.GetFromField(
@@ -209,14 +334,7 @@ public class DataMapper<T> {
 						qualifierValues.put(Bytes.toBytes(qualifier), value);
 					}
 				} else {
-					// not good, use toString
-					LOG.warn("This is not good: instance is not primitive nor List nor Map , but "
-							+ fieldType + ". We use toString() as value.");
-					String qualifier = getDatabaseColumnName(
-							databaseField.qualifierName(), field);
-					Value value = ValueFactory.Create(util.GetFromField(
-							instance, field));
-					qualifierValues.put(Bytes.toBytes(qualifier), value);
+					//
 				}
 
 			}

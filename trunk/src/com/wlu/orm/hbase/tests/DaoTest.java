@@ -32,16 +32,30 @@ public class DaoTest extends TestCase {
 		LikePages lp = new LikePages(mp1, list2, mp3);
 
 		User user = new User("1234", p, lp, 8080);
+		List<String> userList = new ArrayList<String>();
+		for (int i = 0; i < 10; i++) {
+			userList.add(String.format("qualifer-%04d", i));
+		}
+		user.setAlist(userList);
 
 		Dao<User> dao = new DaoImpl<User>(User.class, hbaseconnection);
-
+		dao.CreateTable();
 		dao.Insert(user);
+		// Delete user's name
+		dao.Delete(user, "profile", "name");
+		// Delete a page
+		dao.Delete(user, "likePages", "id1000000");
 		p = new Profile("hellen", "20", "Beijing, Chaoyang #1");
 		user = new User("001", p, null, 8080);
 		dao.Insert(user);
 
 		dao.Delete(user, "profile", "address");
-		dao.Delete(user, "profile", "aint");
+		
+//		try {
+//
+//			dao.Delete(user, "profile", "aint");
+//		} catch (Exception e) {
+//			assertTrue(e.getMessage().contains("is not set as qualifier"));
+//		}
 	}
-
 }

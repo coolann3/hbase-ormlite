@@ -2,6 +2,7 @@ package com.wlu.orm.hbase.dao;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -32,7 +33,7 @@ public class DaoImpl<T> implements Dao<T> {
 	}
 
 	@Override
-	public void Create() {
+	public void CreateTable() {
 		if (hbaseConnection.TableExists(dataMapperFactory.tablename)) {
 			hbaseConnection.DeleteTable(dataMapperFactory.tablename);
 		}
@@ -40,8 +41,9 @@ public class DaoImpl<T> implements Dao<T> {
 	}
 
 	@Override
-	public void CreateIfNotExist() {
+	public void CreateTableIfNotExist() {
 		if (hbaseConnection.TableExists(dataMapperFactory.tablename)) {
+			LOG.info("The table has already existed, will not recreate it.");
 			return;
 		}
 		hbaseConnection.CreateTable(dataMapperFactory.TableCreateDescriptor());
@@ -100,9 +102,10 @@ public class DaoImpl<T> implements Dao<T> {
 	/**
 	 * The qualifier is pretty complicated
 	 */
-	public void Delete(T data, String familyFieldName, String qualifierFieldName) {
-		if (qualifierFieldName == null) {
-			Delete(data, familyFieldName);
+	public void Delete(T data, String FieldNameOfFamily,
+			String FieldNameOfqualifier) {
+		if (FieldNameOfqualifier == null) {
+			Delete(data, FieldNameOfFamily);
 			return;
 		}
 		Value rowkey;
@@ -114,12 +117,12 @@ public class DaoImpl<T> implements Dao<T> {
 					rowkey.toBytes());
 			// get family name
 			Field familyNameField = data.getClass().getDeclaredField(
-					familyFieldName);
+					FieldNameOfFamily);
 			byte[] familyname = GetFamilyByFieldName(familyNameField,
-					familyFieldName);
+					FieldNameOfFamily);
 			// get qualifier name
 			byte[] qualifiername = GetQualiferByFamilyOrSublevelFieldName(
-					familyNameField, qualifierFieldName);
+					familyNameField, FieldNameOfqualifier);
 
 			delete.deleteColumn(familyname, qualifiername);
 			hbaseConnection.Delete(Bytes.toBytes(dataMapperFactory.tablename),
@@ -182,16 +185,15 @@ public class DaoImpl<T> implements Dao<T> {
 	}
 
 	private byte[] GetQualiferByFamilyOrSublevelFieldName(
-			Field familyNameField, String qualifierFieldName)
+			Field familyNameField, String FieldNameOfQualifier)
 			throws HBaseOrmException {
 		// if qualifier name is set with family name
 		byte[] qualifiername = dataMapperFactory.fixedSchema.get(
 				familyNameField).getQualifier();
-		// qualifier is not directly set or set with a wrong value (for List
-		// type, it is wrong)
+		// qualifier is not directly set or set with a wrong value
 		if (qualifiername == null
 				|| Bytes.compareTo(qualifiername,
-						Bytes.toBytes(qualifierFieldName)) != 0) {
+						Bytes.toBytes(FieldNameOfQualifier)) != 0) {
 			qualifiername = null;
 		}
 		if (qualifiername == null) {
@@ -199,16 +201,18 @@ public class DaoImpl<T> implements Dao<T> {
 					.get(familyNameField).getSubFieldToQualifier();
 			if (subFieldToQualifier == null) {
 				qualifiername = null;
-			} else if (subFieldToQualifier.get(qualifierFieldName) != null) {
-				qualifiername = subFieldToQualifier.get(qualifierFieldName);
+			} else if (subFieldToQualifier.get(FieldNameOfQualifier) != null) {
+				qualifiername = subFieldToQualifier.get(FieldNameOfQualifier);
 			} else {
-				throw new HBaseOrmException("The field '" + qualifierFieldName
+				throw new HBaseOrmException("The field '"
+						+ FieldNameOfQualifier
 						+ "' of sub level family class '"
-						+ familyNameField.getName() + "' is not set as qualier");
+						+ familyNameField.getName()
+						+ "' is not set as qualifier");
 			}
 			// else qualifier is set with name of the field's name
 			if (qualifiername == null) {
-				qualifiername = Bytes.toBytes(qualifierFieldName);
+				qualifiername = Bytes.toBytes(FieldNameOfQualifier);
 			}
 		}
 		return qualifiername;
@@ -218,6 +222,52 @@ public class DaoImpl<T> implements Dao<T> {
 	public void Delete(T data) {
 		DeleteById(data);
 
+	}
+
+	@Override
+	public void Update(T data) {
+		Insert(data);
+
+	}
+
+	@Override
+	public void Update(T data, List<String> familyFieldName) {
+		if (familyFieldName == null) {
+			Update(data);
+			return;
+		}
+		try {
+			DataMapper<T> dm = dataMapperFactory.CreateEmpty(data);
+			dm.SetRowKey(data);
+			dm.SetFieldValue(data, familyFieldName);
+			dm.Insert(hbaseConnection);
+		} catch (HBaseOrmException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public T QueryById(Value id) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<T> QueryWithFilter(String filter, boolean returnWholeObject) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<T> QueryWithFilter(String filter) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

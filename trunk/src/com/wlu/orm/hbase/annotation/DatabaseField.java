@@ -18,6 +18,8 @@ public @interface DatabaseField {
 	String qualifierName() default "";
 
 	boolean isQualiferList() default false;
+	
+	boolean isQualifierValueMap() default false;
 
 	boolean id() default false;
 

@@ -76,6 +76,7 @@ public class HBaseConnection {
 
 	public void DeleteTable(final String tableName) {
 		try {
+			admin.disableTable(tableName);
 			admin.deleteTable(tableName);
 		} catch (IOException e) {
 			e.printStackTrace();

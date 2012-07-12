@@ -9,11 +9,11 @@ import com.wlu.orm.hbase.annotation.DatabaseTable;
 
 @DatabaseTable(canBeFamily = true)
 public class LikePages {
-	@DatabaseField()
+	@DatabaseField(isQualifierValueMap = true)
 	private HashMap<String, String> pages1;
-	@DatabaseField()
+	@DatabaseField(isQualiferList = true)
 	private List<String> pages2;
-	@DatabaseField()
+	@DatabaseField(isQualifierValueMap = true)
 	private Map<String, PageContents> pages3;
 
 	public LikePages(HashMap<String, String> pages1, List<String> pages2,

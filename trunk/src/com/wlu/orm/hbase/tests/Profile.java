@@ -14,6 +14,10 @@ public class Profile {
 	
 	private int aint;
 
+	public Profile(){
+		
+	}
+	
 	public Profile(String name, String age, String address) {
 		super();
 		this.name = name;
@@ -44,5 +48,13 @@ public class Profile {
 	public void setAddress(String address) {
 		this.address = address;
 	}
+
+	@Override
+	public String toString() {
+		return "Profile [name=" + name + ", age=" + age + ", address="
+				+ address + ", aint=" + aint + "]";
+	}
+	
+	
 
 }

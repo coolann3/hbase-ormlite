@@ -8,7 +8,7 @@ public class FamilyQualifierSchema {
 	private byte[] family = null;
 	private byte[] qualifier = null;
 	// this is only used as Schema for Delete/etc: from sub(family) class's
-	// field's name to qualifer name
+	// field's name to qualifier name
 	private Map<String, byte[]> subFieldToQualifier = null;
 
 	public byte[] getFamily() {
@@ -30,7 +30,7 @@ public class FamilyQualifierSchema {
 	public Map<String, byte[]> getSubFieldToQualifier() {
 		return subFieldToQualifier;
 	}
-
+	
 	public void setSubFieldToQualifier(Map<String, byte[]> subFieldToQualifier) {
 		this.subFieldToQualifier = subFieldToQualifier;
 	}
