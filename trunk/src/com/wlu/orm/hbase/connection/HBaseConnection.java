@@ -6,10 +6,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 
 public class HBaseConnection {
 
@@ -63,6 +65,21 @@ public class HBaseConnection {
 		} finally {
 			pool.putTable(htable);
 		}
+	}
+
+	public Result Query(byte[] tablename, Get get) {
+		HTable htable = (HTable) pool.getTable(tablename);
+		Result result = null;
+		try {
+			result = htable.get(get);
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			pool.putTable(htable);
+		}
+		return result;
+
 	}
 
 	public boolean TableExists(final String tableName) {

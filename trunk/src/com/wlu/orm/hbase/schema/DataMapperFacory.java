@@ -87,6 +87,20 @@ public class DataMapperFacory<T> {
 
 		return dm;
 	}
+	
+	public DataMapper<T> CreateEmpty(Class<?> clazz) throws HBaseOrmException {
+		// check type
+		if (!clazz.equals(dataClass)) {
+			return null;
+		}
+		// a new DataMapper constructed with the fixed members
+		DataMapper<T> dm = new DataMapper<T>(tablename, fixedSchema,
+				fieldDataType, rowkeyField, dataClass);
+
+		dm.CopyToDataFieldSchemaFromFixedSchema();
+
+		return dm;
+	}
 
 	/**
 	 * a helper method to return script to create the HBase table according to

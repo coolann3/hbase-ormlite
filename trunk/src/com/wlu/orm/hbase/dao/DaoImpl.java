@@ -254,8 +254,16 @@ public class DaoImpl<T> implements Dao<T> {
 
 	@Override
 	public T QueryById(Value id) {
-		// TODO Auto-generated method stub
-		return null;
+		DataMapper<T> dm = null;
+		try {
+			dm = dataMapperFactory.CreateEmpty(dataClass);
+		} catch (HBaseOrmException e) {
+			e.printStackTrace();
+		}
+		if (dm == null) {
+			return null;
+		}
+		return dm.QueryById(id, hbaseConnection);
 	}
 
 	@Override

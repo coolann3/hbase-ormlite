@@ -1,17 +1,21 @@
 package com.wlu.orm.hbase.schema;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.wlu.orm.hbase.annotation.DatabaseField;
@@ -71,6 +75,129 @@ public class DataMapper<T> {
 		}
 
 		connection.Insert(Bytes.toBytes(tablename), put);
+	}
+
+	public T QueryById(Value id, HBaseConnection connection) {
+		byte[] rowkey = id.toBytes();
+		Get get = new Get(rowkey);
+		Result result = connection.Query(Bytes.toBytes(tablename), get);
+
+		try {
+			return CreateObjectFromResult(result);
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private T CreateObjectFromResult(Result result) throws SecurityException,
+			NoSuchMethodException, IllegalArgumentException,
+			InstantiationException, IllegalAccessException,
+			InvocationTargetException {
+		Class<?> clazz = dataClass;
+		Constructor<?> constr = clazz.getDeclaredConstructor();
+		Object instance = constr.newInstance();
+		for (Field field : clazz.getDeclaredFields()) {
+			// datatype info
+			FieldDataType fdt = fieldDataType.get(field);
+			// schema info
+			FamilyQualifierSchema fqs = fixedSchema.get(field);
+			if (fdt.isSkip()) {
+				continue;
+			} else if (fdt.isPrimitive()) {
+				byte[] value = result.getValue(fqs.getFamily(),
+						fqs.getQualifier());
+				Class<?> fieldClazz = fdt.dataclass;
+				// convert from byte[] to Object according to field clazz
+				Object fieldinstance = ValueFactory.CreateObject(fieldClazz,
+						value);
+				util.SetToField(instance, field, fieldinstance);
+			} else if (fdt.isList()) {
+				// get qualifier names and add the the list
+				NavigableMap<byte[], byte[]> qvmap = result.getFamilyMap(fqs
+						.getFamily());
+				List<String> lst = new ArrayList<String>();
+				for (byte[] q : qvmap.keySet()) {
+					lst.add(Bytes.toString(q));
+				}
+				util.SetToField(instance, field, lst);
+			} else if (fdt.isMap()) {
+				// get qualifier-value map and put the map
+				NavigableMap<byte[], byte[]> qvmap = result.getFamilyMap(fqs
+						.getFamily());
+				Map<String, String> map2 = new HashMap<String, String>();
+				for (byte[] q : qvmap.keySet()) {
+					map2.put(Bytes.toString(q), Bytes.toString(qvmap.get(q)));
+				}
+				util.SetToField(instance, field, map2);
+			} else if (fdt.isSubLevelClass()) {
+				// get the qualifer-object....
+				Object sublevelObj = CreateSubLevelObject(
+						fqs.getSubFieldToQualifier(), fdt,
+						result.getFamilyMap(fqs.getFamily()));
+				util.SetToField(instance, field, sublevelObj);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		T RetObject = (T) instance;
+
+		return RetObject;
+	}
+
+	private Object CreateSubLevelObject(
+			Map<String, byte[]> subfieldToQualifier, FieldDataType fdt,
+			NavigableMap<byte[], byte[]> map) throws SecurityException,
+			NoSuchMethodException, IllegalArgumentException,
+			InstantiationException, IllegalAccessException,
+			InvocationTargetException {
+		Class<?> fieldClazz = fdt.dataclass;
+		Constructor<?> constr = fieldClazz.getDeclaredConstructor();
+		Object fieldinstance = constr.newInstance();
+
+		for (Field subField : fieldClazz.getDeclaredFields()) {
+			FieldDataType subdatatype = fdt.getSubLevelDataType(subField);
+			String fieldstringname = subField.getName();
+			if (subdatatype.isSkip()) {
+				continue;
+			} else if (subdatatype.isPrimitive()) {
+				byte[] value = map
+						.get(subfieldToQualifier.get(fieldstringname));
+
+				Class<?> subfieldClazz = subdatatype.dataclass;
+				// convert from byte[] to Object according to field clazz
+				Object subfieldinstance = ValueFactory.CreateObject(
+						subfieldClazz, value);
+				util.SetToField(fieldinstance, subField, subfieldinstance);
+			} else if (subdatatype.isList()) {
+				NavigableMap<byte[], byte[]> qvmap = map;
+				List<String> lst = new ArrayList<String>();
+				for (byte[] q : qvmap.keySet()) {
+					lst.add(Bytes.toString(q));
+				}
+				util.SetToField(fieldinstance, subField, lst);
+			} else if (subdatatype.isMap()) {
+				NavigableMap<byte[], byte[]> qvmap = map;
+				Map<String, String> map2 = new HashMap<String, String>();
+				for (byte[] q : qvmap.keySet()) {
+					map2.put(Bytes.toString(q), Bytes.toString(qvmap.get(q)));
+				}
+				util.SetToField(fieldinstance, subField, map2);
+			} else {
+				util.SetToField(fieldinstance, subField, null);
+			}
+		}
+		return fieldinstance;
 	}
 
 	/**

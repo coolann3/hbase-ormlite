@@ -38,6 +38,27 @@ public class ValueFactory {
 		// return null;
 	}
 
+	/**
+	 * Create a Object with type clazz from byte[]
+	 * 
+	 * @param clazz
+	 * @param bytes
+	 * @return
+	 */
+	public static Object CreateObject(Class<?> clazz, byte[] bytes) {
+		if (clazz.equals(INTEGER)) {
+			return new Integer(Bytes.toInt(bytes));
+		} else if (clazz.equals(DOUBLE)) {
+			return new Double(Bytes.toDouble(bytes));
+		} else if (clazz.equals(FLOAT)) {
+			return new Float(Bytes.toFloat(bytes));
+		} else if (clazz.equals(STRING)) {
+			return new String(Bytes.toString(bytes));
+		} else {
+			return null;
+		}
+	}
+
 	/*
 	 * used when directly create a Value
 	 */
