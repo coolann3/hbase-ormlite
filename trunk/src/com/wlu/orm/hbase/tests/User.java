@@ -36,6 +36,10 @@ public class User {
 		this.aint = aint;
 	}
 
+	public User() {
+
+	}
+
 	public String getId() {
 		return id;
 	}
@@ -68,4 +72,12 @@ public class User {
 		this.aint = aint;
 	}
 
+	@Override
+	public String toString() {
+		return "User [id=" + id + ", profile=" + profile + ", likePages="
+				+ likePages + ", aint=" + aint + ", alist=" + alist + ", bint="
+				+ bint + "]";
+	}
+
+	
 }

@@ -38,6 +38,7 @@ public class DaoImpl<T> implements Dao<T> {
 			hbaseConnection.DeleteTable(dataMapperFactory.tablename);
 		}
 		hbaseConnection.CreateTable(dataMapperFactory.TableCreateDescriptor());
+		LOG.info(dataMapperFactory.TableCreateScript());
 	}
 
 	@Override
@@ -47,7 +48,7 @@ public class DaoImpl<T> implements Dao<T> {
 			return;
 		}
 		hbaseConnection.CreateTable(dataMapperFactory.TableCreateDescriptor());
-
+		LOG.info(dataMapperFactory.TableCreateScript());
 	}
 
 	@Override

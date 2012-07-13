@@ -87,7 +87,7 @@ public class DataMapperFacory<T> {
 
 		return dm;
 	}
-	
+
 	public DataMapper<T> CreateEmpty(Class<?> clazz) throws HBaseOrmException {
 		// check type
 		if (!clazz.equals(dataClass)) {
@@ -196,8 +196,9 @@ public class DataMapperFacory<T> {
 		String qualifier;
 		Map<String, byte[]> subFieldToQualifier = null;
 		// TODO
-		// 1. primitive type
-		if (field.getType().isPrimitive()) {
+		// 1. primitive type or string
+		if (field.getType().isPrimitive()
+				|| field.getType().equals(String.class)) {
 			if (databaseField.familyName().length() == 0) {
 				throw new HBaseOrmException(
 						"For primitive typed field "

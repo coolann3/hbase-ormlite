@@ -46,7 +46,13 @@ public class ValueFactory {
 	 * @return
 	 */
 	public static Object CreateObject(Class<?> clazz, byte[] bytes) {
-		if (clazz.equals(INTEGER)) {
+		if (clazz.equals(int.class)) {
+			return new Integer(Bytes.toInt(bytes));
+		} else if (clazz.equals(double.class)) {
+			return new Double(Bytes.toDouble(bytes));
+		} else if (clazz.equals(float.class)) {
+			return new Float(Bytes.toFloat(bytes));
+		} else if (clazz.equals(INTEGER)) {
 			return new Integer(Bytes.toInt(bytes));
 		} else if (clazz.equals(DOUBLE)) {
 			return new Double(Bytes.toDouble(bytes));
