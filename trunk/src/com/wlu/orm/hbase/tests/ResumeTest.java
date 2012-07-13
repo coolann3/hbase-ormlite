@@ -3,7 +3,6 @@ package com.wlu.orm.hbase.tests;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.BeforeClass;
 
 import com.wlu.orm.hbase.connection.HBaseConnection;
 import com.wlu.orm.hbase.dao.Dao;
