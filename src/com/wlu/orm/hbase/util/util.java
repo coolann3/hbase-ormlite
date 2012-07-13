@@ -61,6 +61,9 @@ public class util {
 			throws IllegalArgumentException, IllegalAccessException,
 			InvocationTargetException {
 		Method m = findGetMethod(field);
+		if(m == null){
+			return null;
+		}
 		return m.invoke(instance);
 	}
 

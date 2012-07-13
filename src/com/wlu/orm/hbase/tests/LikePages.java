@@ -23,6 +23,10 @@ public class LikePages {
 		this.pages2 = pages2;
 		this.pages3 = pages3;
 	}
+	
+	public LikePages(){
+		
+	}
 
 	public HashMap<String, String> getPages1() {
 		return pages1;

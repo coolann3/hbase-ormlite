@@ -108,6 +108,13 @@ public class DataMapper<T> {
 		Constructor<?> constr = clazz.getDeclaredConstructor();
 		Object instance = constr.newInstance();
 		for (Field field : clazz.getDeclaredFields()) {
+			if (field.equals(rowkeyField)) {
+				byte[] value = result.getRow();
+				Object fieldinstance = ValueFactory.CreateObject(
+						field.getType(), value);
+				util.SetToField(instance, field, fieldinstance);
+				continue;
+			}
 			// datatype info
 			FieldDataType fdt = fieldDataType.get(field);
 			// schema info
